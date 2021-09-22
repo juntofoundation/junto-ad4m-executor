@@ -1,7 +1,7 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import didWallet from '@transmute/did-wallet'
-import type { Language, Expression, PublicSharing, ReadOnlyLanguage } from '@perspect3vism/ad4m';
+import type { Language, Expression, PublicSharing, ReadOnlyLanguage, EntanglementProof } from '@perspect3vism/ad4m';
 import { Agent, ExpressionProof } from '@perspect3vism/ad4m';
 import secp256k1 from 'secp256k1'
 import * as secp256k1DIDKey from '@transmute/did-key-secp256k1';
@@ -18,6 +18,7 @@ export default class AgentService {
     #wallet?: object
     #file: string
     #fileProfile: string
+    #entanglementProofs: string
     #agent?: Agent
     #agentLanguage?: Language
     #pubsub: PubSub
@@ -29,6 +30,7 @@ export default class AgentService {
     constructor(rootConfigPath: string) {
         this.#file = path.join(rootConfigPath, "agent.json")
         this.#fileProfile = path.join(rootConfigPath, "agentProfile.json")
+        this.#entanglementProofs = path.join(rootConfigPath, "entanglementProofs.json")
         this.#pubsub = PubSubInstance.get()
         this.#readyPromise = new Promise(resolve => {
             this.#readyPromiseResolve = resolve
@@ -79,6 +81,28 @@ export default class AgentService {
         } as Expression
 
         return signedExpresssion
+    }
+
+    signString(data: string): string {
+        if(!this.isInitialized){
+            throw new Error("Can't sign without keystore")
+        }
+        if(!this.isUnlocked()) {
+            throw new Error("Can't sign with locked keystore")
+        }
+        if(!this.#signingKeyId) {
+            throw new Error("Can't sign without signingKeyId")
+        }
+
+        const payloadBytes = Signatures.buildMessageRaw(data)
+
+        const key = this.getSigningKey()
+        const privKey = Uint8Array.from(Buffer.from(key.privateKey, key.encoding))
+
+        const sigObj = secp256k1.ecdsaSign(payloadBytes, privKey)
+        const sigBuffer = Buffer.from(sigObj.signature)
+        const sigHex = sigBuffer.toString('hex')
+        return sigHex
     }
 
     async updateAgent(a: Agent) {

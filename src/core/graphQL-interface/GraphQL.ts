@@ -130,25 +130,43 @@ function createResolvers(core: PerspectivismCore) {
                 return core.perspectivesController.allPerspectiveHandles()
             },
             //@ts-ignore
+            agentGetEntanglementProofs: (parent, args, context, info) => {
+                return core.entanglementProofController.getEntanglementProofs();
+            },
+            //@ts-ignore
             getTrustedAgents: (parent, args, context, info) => {
                 return core.runtimeService.getTrustedAgents();
             },
-
             //@ts-ignore
             runtimeKnownLinkLanguageTemplates: () => {
                 return core.runtimeService.knowLinkLanguageTemplates();
             },
-
             //@ts-ignore
             runtimeFriends: () => {
                 return core.runtimeService.friends();
             },
-
             runtimeHcAgentInfos: async () => {
                 return JSON.stringify(await core.holochainRequestAgentInfos())
             }
         },
         Mutation: {
+            //@ts-ignore
+            agentAddEntanglementProofs: (parent, args, context, info) => {
+                const { proofs } = args;
+                core.entanglementProofController.addEntanglementProofs(proofs);
+                return core.entanglementProofController.getEntanglementProofs();
+            },
+            //@ts-ignore
+            agentDeleteEntanglementProofs: (parent, args, context, info) => {
+                const { proofs } = args;
+                core.entanglementProofController.deleteEntanglementProofs(proofs);
+                return core.entanglementProofController.getEntanglementProofs();  
+            },
+            //@ts-ignore
+            agentEntanglementProofPreFlight: (parent, args, context, info) => {
+                const { deviceKey } = args;
+                return core.entanglementProofController.signDeviceKey(deviceKey);
+            },
             //@ts-ignore
             addTrustedAgents: (parent, args, context, info) => {
                 const { agents } = args;
@@ -173,7 +191,7 @@ function createResolvers(core: PerspectivismCore) {
                 core.runtimeService.removeKnownLinkLanguageTemplates(addresses);
                 return core.runtimeService.knowLinkLanguageTemplates();
             },
-                                    //@ts-ignore
+            //@ts-ignore
             runtimeAddFriends: (parent, args, context, info) => {
                 const { dids } = args;
                 core.runtimeService.addFriends(dids);

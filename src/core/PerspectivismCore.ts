@@ -15,13 +15,15 @@ import type { DIDResolver } from './agent/DIDs'
 import Signatures from './agent/Signatures'
 import * as PubSub from './graphQL-interface/PubSub'
 import { IPFS as IPFSType } from 'ipfs'
-import path from 'path'
+import EntanglementProofController from './EntanglementProof'
+import runDAppServer from "./DAppServer"
 import fs from 'fs'
 import { RequestAgentInfoResponse } from '@holochain/conductor-api'
 import RuntimeService from './RuntimeService'
 import { PERSPECT3VIMS_AGENT_INFO } from './perspect3vismAgentInfo'
 
 export interface InitServicesParams {
+    agentDid: string,
     hcPortAdmin?: number, 
     hcPortApp?: number,
     ipfsSwarmPort?: number,
@@ -44,6 +46,8 @@ export default class PerspectivismCore {
 
     #perspectivesController?: PerspectivesController
     #languageController?: LanguageController
+
+    #entanglementProofController?: EntanglementProofController
 
     constructor(config: Config.CoreConfig) {
         Config.init(config)
@@ -81,6 +85,13 @@ export default class PerspectivismCore {
         return this.#languageController!
     }
 
+    get entanglementProofController(): EntanglementProofController {
+        if (!this.#entanglementProofController) {
+            this.#entanglementProofController = new EntanglementProofController(Config.rootConfigPath, this.#agentService);
+        }
+        return this.#entanglementProofController
+    }
+
     async exit() {
         await this.#IPFS?.stop();
         await this.#holochain?.stop();
@@ -96,6 +107,10 @@ export default class PerspectivismCore {
         console.log(`🚀  GraphQL subscriptions ready at ${subscriptionsUrl}`)
     }
 
+    startDAppServer(port: number) {
+        runDAppServer(port)
+    }
+
     async initServices(params: InitServicesParams) {
         console.log("Init HolochainService with data path: ", Config.holochainDataPath, ". Conductor path: ", Config.holochainConductorPath, ". Resource path: ", Config.resourcePath)
         console.log(`Holochain ports: admin=${params.hcPortAdmin} app=${params.hcPortApp}`)
@@ -109,7 +124,7 @@ export default class PerspectivismCore {
             useProxy: params.hcUseProxy,
             useLocalProxy: params.hcUseLocalProxy,
             useMdns: params.hcUseMdns,
-        })
+        }, params.agentDid, this.entanglementProofController)
         let [ipfs, _] = await Promise.all([IPFS.init(
             params.ipfsSwarmPort, 
             params.ipfsRepoPath
@@ -144,6 +159,8 @@ export default class PerspectivismCore {
             agentService: this.agentService,
             languageController: this.#languageController
         })
+
+        this.entanglementProofController
     }
 
     async initLanguages() {
